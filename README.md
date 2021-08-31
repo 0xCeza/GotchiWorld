@@ -4,8 +4,8 @@ To test, copy Nursery.sol, create NurseryTest.sol
 In NurseryTest.sol modify the following :
 
 1. Deplace function line 24: function claimTickets(uint256[] calldata _ids, uint256[] calldata _values) external;  
-**from** interface IStakingFacet   
-**to** interface ITicketsFacet   
+**from** interface IStakingFacet{  
+**to** interface ITicketsFacet{ (should be new line 33)   
 DO NOT LEAVE EMPTY LINE (otherwise add 1 to future instructions :D)  
 
 2. Modify line 46  
