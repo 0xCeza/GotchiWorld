@@ -22,7 +22,7 @@ DO NOT LEAVE EMPTY LINE (otherwise add 1 to future instructions :D)
 
 5. Modify line 306   
 **from** if(hasApprovedGotchiInteraction(_member) && hasStaked(_member) && hasMembership(_member)) {  
-**to** if(/*hasApprovedGotchiInteraction(_member) &&*/ hasStaked(_member) && hasMembership(_member)) {  
+**to** if(hasStaked(_member) && hasMembership(_member)) {  
   
 
 Execute using npx hardhat test
