@@ -1,7 +1,5 @@
-// We import Chai to use its asserting functions here.
 const { expect } = require("chai");
 
-/** */
 describe("DEPLOYEMENT", function () {
 
   let NurseryTest;
