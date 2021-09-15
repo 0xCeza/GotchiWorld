@@ -1,5 +1,7 @@
+// We import Chai to use its asserting functions here.
 const { expect } = require("chai");
 
+/** */
 describe("DEPLOYEMENT", function () {
 
   let NurseryTest;
@@ -28,6 +30,8 @@ describe("DEPLOYEMENT", function () {
     stakedAmount = ethers.utils.parseUnits("68.0", 18); 
     stakingFees = ethers.utils.parseUnits("1.0", 18);
     doubleStakingFees = ethers.utils.parseUnits("2.0", 18);
+    bigStake = ethers.utils.parseUnits("100.0", 18);
+    bigStaked = ethers.utils.parseUnits("99.0", 18);
 
     // Get the ContractFactory.
     NurseryTest = await ethers.getContractFactory("NurseryTest");
@@ -37,7 +41,11 @@ describe("DEPLOYEMENT", function () {
     // Get deployed contracts
     token20Contract = await Token20.deploy(); // Deployed with no args
     token1155Contract = await Token1155.deploy(); // Deployed with no args
-    nurseryContract = await NurseryTest.deploy(token1155Contract.address,token1155Contract.address,token20Contract.address); // Deployer with args
+    nurseryContract = await NurseryTest.deploy(
+      token1155Contract.address,
+      token1155Contract.address,
+      token20Contract.address,
+      token20Contract.address); // Deployer with args
 
     // Mints 200 ERC20
     await token20Contract.connect(owner).mint();
@@ -46,14 +54,14 @@ describe("DEPLOYEMENT", function () {
     await token20Contract.connect(addr3).mint();
 
     // Allow the contract to move users ERC20
-    await token20Contract.connect(addr1).approve(nurseryContract.address,stakingAmount);
+    await token20Contract.connect(addr1).approve(nurseryContract.address,bigStake);
     await token20Contract.connect(addr2).approve(nurseryContract.address,stakingAmount);
     await token20Contract.connect(addr3).approve(nurseryContract.address,stakingAmount);
 
     // Allow staking the contracts GHST into ERC20 using stakeGHST();
     await nurseryContract.approveGhst();
 
-    /* Used to understand why ERC20 transferFrom nursery to ERC20 reverts with "not enough allowance", didnt find why.
+    /* Used to understand why ERC20 transferFrom nursery to ERC20 reverts, didnt find why.
     const nuseryToERC20Allowance = (await token20Contract.allowance(nurseryContract.address, token20Contract.address));
     console.log(`nuseryToERC20Allowance : ${nuseryToERC20Allowance}`)
 
@@ -64,13 +72,14 @@ describe("DEPLOYEMENT", function () {
     */ 
 
     // Addr3 will always have GHST Staked
-    await nurseryContract.connect(addr3).stakeGhst();
+    await nurseryContract.connect(addr3).stakeGhst(stakingAmount);
   });
 
   it("Contract: Should set all token address", async function () {
     expect(await nurseryContract.diamond()).to.be.equal(token1155Contract.address);
     expect(await nurseryContract.ghstDiamond()).to.be.equal(token1155Contract.address);
     expect(await nurseryContract.ghstERC20()).to.be.equal(token20Contract.address);
+    expect(await nurseryContract.petContract()).to.be.equal(token20Contract.address);
   });
 
   it("Addr1 & 2 & Owner: Should all have 200 token", async function () {
@@ -79,12 +88,12 @@ describe("DEPLOYEMENT", function () {
     expect(await token20Contract.balanceOf(owner.address)).to.be.equal(ethers.utils.parseUnits("200.0", 18));
   });
 
-  it("Addr3: Should all have 200 - 69 token", async function () {
+  it("Addr3: Should all have 200 - 99 token", async function () {
     expect(await token20Contract.balanceOf(addr3.address)).to.be.equal(ethers.utils.parseUnits("131.0", 18));
   });
 
-  it("Addr1 & 2: Allowed to use 69 token", async function () {
-    expect(await token20Contract.allowance(addr1.address,nurseryContract.address)).to.be.equal(stakingAmount);
+  it("Addr1 & 2: Allowed to use 99 token", async function () {
+    expect(await token20Contract.allowance(addr1.address,nurseryContract.address)).to.be.equal(bigStake);
     expect(await token20Contract.allowance(addr2.address,nurseryContract.address)).to.be.equal(stakingAmount);
   });
 
@@ -92,32 +101,21 @@ describe("DEPLOYEMENT", function () {
     expect(await token20Contract.allowance(addr3.address,nurseryContract.address)).to.be.equal(0);
   });
 
-  describe("EVENTS: ADD MEMBER", function () {
-    it("should emit AddMember event", async function () { 
-      await expect(nurseryContract.connect(addr1).stakeGhst())
-      .to.emit(nurseryContract, 'AddMember')
-      .withArgs(addr1.address);
-    })  
-  })
-
-  describe("EVENTS: REMOVE MEMBER", function () {
-    beforeEach(async function () {
-      await nurseryContract.connect(addr1).stakeGhst();
-    })
-    it("should emit removeMember event", async function () { 
-      await expect(nurseryContract.connect(addr1).unstakeGhst())
-      .to.emit(nurseryContract, 'RemoveMember')
-      .withArgs(addr1.address);
-    })
-  })
+  it("totalMember = 2", async function () {
+    expect(await nurseryContract.totalMembers()).to.be.equal(2);
+  });
 
   describe("STAKING", function () {
     beforeEach(async function () {
-      await nurseryContract.connect(addr1).stakeGhst();
+      await nurseryContract.connect(addr1).stakeGhst(bigStake);
     })  
 
+    it("totalMember = 3", async function () {
+      expect(await nurseryContract.totalMembers()).to.be.equal(3);
+    });
+
     it("Addr1: Should revert stacking twice", async function() {
-      await expect(nurseryContract.connect(addr1).stakeGhst()).to.be.reverted;
+      await expect(nurseryContract.connect(addr1).stakeGhst(bigStake)).to.be.reverted;
     })
 
     it("Addr2: Should revert unstacking, did not stake anything", async function() {
@@ -125,7 +123,7 @@ describe("DEPLOYEMENT", function () {
     })
 
     it("Addr1: Balance = 68 GHST", async function () {
-      expect(await nurseryContract.connect(addr1).stakedAmount()).to.be.equal(stakedAmount);
+      expect(await nurseryContract.connect(addr1).stakedAmount()).to.be.equal(bigStaked);
     })
 
     it("Addr2: Balance = 0 GHST", async function () {
@@ -140,26 +138,12 @@ describe("DEPLOYEMENT", function () {
       expect(await nurseryContract.hasStaked(addr2.address)).to.be.false;
     })
 
-    it("Addr1: hasMembership is true", async function () {
-      expect(await nurseryContract.hasMembership(addr1.address)).to.be.true;
-    })
-
-    it("Addr2: hasMembership is false", async function () {
-      expect(await nurseryContract.hasMembership(addr2.address)).to.be.false;
-    })
-
     it("Addr1: shouldPet is true", async function () {
       expect(await nurseryContract.shouldPet(addr1.address)).to.be.true;
     })
 
     it("Addr2: shouldPet is false", async function () {
       expect(await nurseryContract.shouldPet(addr2.address)).to.be.false;
-    })
-
-    it("Contract: Should have 2 members (Addr1 and 3)", async function () {
-      expect(
-        (((await nurseryContract.connect(addr1).getMembers()).length)-1)
-        ).to.be.equal(2);
     })
 
     it("Contract: collected fees should = 2", async function () {
@@ -186,7 +170,11 @@ describe("DEPLOYEMENT", function () {
         await nurseryContract.connect(addr1).unstakeGhst();
       })
 
-      it("Contract: Balance = 68 GHST, because ADDR3 + ERC20 transferFrom KO", async function () {
+      it("totalMember = 2", async function () {
+        expect(await nurseryContract.totalMembers()).to.be.equal(2);
+      });
+
+      it("Contract: Balance = 98 GHST, because ADDR3 + ERC20 transferFrom KO", async function () {
         expect((await token20Contract.balanceOf(nurseryContract.address))).to.be.equal(stakedAmount);
       })
 
@@ -201,20 +189,11 @@ describe("DEPLOYEMENT", function () {
       it("Addr1: hasStaked is false", async function () {
         expect(await nurseryContract.hasStaked(addr1.address)).to.be.false;
       })
-   
-      it("Addr1: hasMembership is false", async function () {
-        expect(await nurseryContract.hasMembership(addr1.address)).to.be.false;
-      })
   
       it("Addr1: shouldPet is false", async function () {
         expect(await nurseryContract.shouldPet(addr1.address)).to.be.false;
       })
 
-      it("Contract: should have 1 member (Addr3)", async function () {
-        expect(
-          (((await nurseryContract.connect(addr1).getMembers()).length)-1)
-          ).to.be.equal(1);
-      })
     })
   })
 });
