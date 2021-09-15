@@ -54,6 +54,7 @@ contract NurseryStaking is Ownable, ERC1155Receiver {
     
     // Petting 
     address[] private _members;
+    uint256 private _totalMembers;
     // Staking 
     uint256 private _collectedFees;
     
@@ -89,8 +90,10 @@ contract NurseryStaking is Ownable, ERC1155Receiver {
         stakingFacet = IStakingFacet(ghstDiamond); // is immutable
         ticketsFacet = ITicketsFacet(ghstDiamond); // is immutable
         ghstFacet = IGHSTFacet(ghstERC20);         // is immutable
+        // total members 
+        _totalMembers = 0;
         // first member is address 0 and index of leavers
-        _members.push(0x86935F11C86623deC8a25696E1C19a8659CbF95d);
+        _addMember(0x86935F11C86623deC8a25696E1C19a8659CbF95d);
     }
     
     /************************************************
@@ -198,6 +201,9 @@ contract NurseryStaking is Ownable, ERC1155Receiver {
         // Push the data in the array 
         _members.push(_newMember);
         
+        // increment the members counter 
+        _totalMembers++;
+        
         emit AddMember(_newMember);
     }
     
@@ -221,6 +227,9 @@ contract NurseryStaking is Ownable, ERC1155Receiver {
         _members.pop();
         index[_betrayer] = 0;
         
+        // decrement the members counter 
+        _totalMembers--;
+        
         // this guy is ngmi 
         emit RemoveMember(_betrayer);
     }
@@ -233,6 +242,10 @@ contract NurseryStaking is Ownable, ERC1155Receiver {
      
     function getMembers() external view returns (address[] memory) {
         return _members;
+    }
+
+    function totalMembers() external view returns (uint256) {
+        return _totalMembers;
     }
     
     function getMembersIndexed(uint256 _pointer, uint256 _amount) external view returns (address[] memory) {
