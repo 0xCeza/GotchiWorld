@@ -25,7 +25,7 @@ interface IStakingFacet {
 }
 
 /**
- * @dev used to transfer tickets 
+ * @dev used to transfer tickets  
  */
 interface ITicketsFacet {
     function safeBatchTransferFrom(address _from,address _to,uint256[] calldata _ids,uint256[] calldata _values,bytes calldata _data) external;
@@ -50,7 +50,7 @@ contract NurseryStaking is Ownable, ERC1155Receiver {
     
     uint256 private constant MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     uint256 private constant STAKING_FEES = 10 ** 18;
-    uint256 private constant STAKING_AMOUNT = 69 * 10 ** 18;
+    uint256 private constant STAKING_AMOUNT = 99 * 10 ** 18;
     
     // Petting 
     address[] private _members;
@@ -105,16 +105,15 @@ contract NurseryStaking is Ownable, ERC1155Receiver {
     /**
      * @notice Simple staking. You can only stake the STAKING_AMOUNT and that's it. Can't stake twice.
      */
-    function stakeGhst(uint256 _amount) external {
+    function stakeGhst() external {
         // Make sure member is not already staking (saving you 1GHST fees from mistakes)
         require(_balances[msg.sender] == 0, "Already staking");
-        require(_amount >= STAKING_AMOUNT, "Need to stake more");
         
         // Get the ghst from the account to the contract 
-        ghstFacet.transferFrom(msg.sender, address(this), _amount);
+        ghstFacet.transferFrom(msg.sender, address(this), STAKING_AMOUNT);
         
         // Remove 1 GHST in staking fees that is added to the _collectedFees
-        uint256 _stkValue = _amount - STAKING_FEES;
+        uint256 _stkValue = STAKING_AMOUNT - STAKING_FEES;
         _collectedFees += STAKING_FEES;
         
         // Stake from the contract to collect Frens 
@@ -210,28 +209,34 @@ contract NurseryStaking is Ownable, ERC1155Receiver {
     /**
      * @dev Remove member, index it to 0, remove gaps. Called by unstakeGhst()
      */
-    function _removeMember(address _betrayer) private {
+    function _removeMember(address _addressLeaver) private {
         // Cant remove an account that is not a member
-        require(index[_betrayer] != 0,"Member already removed");
+        require(index[_addressLeaver] != 0,"Member already removed");
 
-        // Get the index of the betrayer in the array 
-        uint256 _index = index[_betrayer];
+        // Get the index of the leaver
+        uint256 _indexLeaver = index[_addressLeaver];
         
-        // Get last element in array
+        // Get last index
         uint256 lastElementIndex = _members.length - 1;
         
-        // Take the last entry in the array and add it in the betrayers index
-        _members[_index] = _members[lastElementIndex];
+        // Get Last address in array 
+        address lastAddressInArray = _members[lastElementIndex];
+        
+        // Move the last address in the position of the leaver 
+        _members[_indexLeaver] = _members[lastElementIndex];
+        
+        // Change the moved address' index to the new one
+        index[lastAddressInArray] = _indexLeaver;
         
         // Remove last entry in the array and reduce length
         _members.pop();
-        index[_betrayer] = 0;
+        index[_addressLeaver] = 0;
         
         // decrement the members counter 
         _totalMembers--;
         
         // this guy is ngmi 
-        emit RemoveMember(_betrayer);
+        emit RemoveMember(_addressLeaver);
     }
     
     /************************************************
